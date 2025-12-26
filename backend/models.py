@@ -57,3 +57,12 @@ class Transaction(SQLModel, table=True):
     # Relationships
     user: User = Relationship(back_populates="transactions")
     post: Post = Relationship(back_populates="transactions")
+
+class UserRead(SQLModel):
+    """
+    A specific model for sending user data to the frontend.
+    It EXCLUDES relationships (posts, portfolio) to prevent crashes.
+    """
+    id: int
+    username: str
+    balance: float

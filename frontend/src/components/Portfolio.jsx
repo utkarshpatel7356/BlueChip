@@ -10,6 +10,7 @@ const Portfolio = () => {
 
     useEffect(() => {
         const fetchPortfolioData = async () => {
+            if (!user || !user.id) return;
             try {
                 // 1. Get Holdings (Now includes avg_buy_price)
                 const portRes = await endpoints.getPortfolio(USER_ID);

@@ -15,22 +15,26 @@ const Feed = () => {
 
     const refreshData = async () => {
         try {
-            // 1. Fetch Posts
+            // 1. Fetch Posts (Safe to do always)
             const postsRes = await endpoints.getPosts();
             setPosts(postsRes.data.sort((a, b) => b.id - a.id));
 
-            // 2. Fetch User Balance (Updates Sidebar)
+            // 2. Refresh User & Check if logged in
             await refreshUser(); 
-
-            // 3. Fetch Portfolio (Updates "You Own" on cards) <--- NEW LOGIC
-            const portfolioRes = await endpoints.getPortfolio(USER_ID);
             
-            // Convert array to Map: { post_id: shares_owned }
-            const portfolioMap = {};
-            portfolioRes.data.forEach(item => {
-                portfolioMap[item.post_id] = item.shares_owned;
-            });
-            setHoldings(portfolioMap);
+            // --- FIX START ---
+            // Only fetch portfolio if we actually have a User ID
+            // We use the 'user' object from context, OR check the token
+            if (user && user.id) {
+                const portfolioRes = await endpoints.getPortfolio(user.id);
+                
+                const portfolioMap = {};
+                portfolioRes.data.forEach(item => {
+                    portfolioMap[item.post_id] = item.shares_owned;
+                });
+                setHoldings(portfolioMap);
+            }
+            // --- FIX END ---
 
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -65,7 +69,7 @@ const Feed = () => {
         e.preventDefault();
         if (!newPostContent) return;
         try {
-            await endpoints.createPost(newPostContent, USER_ID);
+            await endpoints.createPost(newPostContent);
             setNewPostContent("");
             refreshData();
         } catch (err) {
