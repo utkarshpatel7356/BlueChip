@@ -1,19 +1,22 @@
+// frontend/src/components/Portfolio.jsx
 import React, { useEffect, useState } from 'react';
 import { endpoints } from '../api';
 import { useUser } from '../context/UserContext';
 import { PieChart, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
 
 const Portfolio = () => {
-    const { user, refreshUser, USER_ID } = useUser();
+    const { user, refreshUser } = useUser(); // Removed USER_ID
     const [assets, setAssets] = useState([]);
     const [netWorth, setNetWorth] = useState(0);
 
     useEffect(() => {
         const fetchPortfolioData = async () => {
+            // Check if user is loaded before fetching
             if (!user || !user.id) return;
+
             try {
-                // 1. Get Holdings (Now includes avg_buy_price)
-                const portRes = await endpoints.getPortfolio(USER_ID);
+                // 1. Get Holdings
+                const portRes = await endpoints.getPortfolio(user.id); // Use user.id
                 const holdings = portRes.data;
 
                 // 2. Get Live Prices
@@ -31,7 +34,8 @@ const Portfolio = () => {
                     const currentVal = h.shares_owned * post.current_price;
                     const costBasis = h.shares_owned * h.avg_buy_price;
                     const pnl = currentVal - costBasis;
-                    const pnlPercent = ((pnl / costBasis) * 100);
+                    // Avoid division by zero
+                    const pnlPercent = costBasis > 0 ? ((pnl / costBasis) * 100) : 0;
 
                     totalAssetValue += currentVal;
 
@@ -49,10 +53,8 @@ const Portfolio = () => {
 
                 setAssets(detailedAssets);
                 
-                // Net Worth = Cash + Assets
-                if (user) {
-                    setNetWorth(user.balance + totalAssetValue);
-                }
+                // 4. Update Net Worth
+                setNetWorth(user.balance + totalAssetValue);
 
             } catch (err) {
                 console.error("Portfolio load failed", err);
@@ -61,7 +63,7 @@ const Portfolio = () => {
 
         fetchPortfolioData();
         refreshUser();
-    }, [USER_ID]);
+    }, [user]); // Re-run when user changes
 
     if (!user) return <div className="p-10 text-gray-500">Loading Financial Data...</div>;
 
@@ -70,7 +72,6 @@ const Portfolio = () => {
             
             {/* Header: Net Worth Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Total Net Worth */}
                 <div className="bg-terminal-card border border-terminal-border p-6 rounded-lg relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-4 opacity-10">
                         <PieChart size={64} className="text-white" />
@@ -81,7 +82,6 @@ const Portfolio = () => {
                     </p>
                 </div>
 
-                {/* Liquid Cash */}
                 <div className="bg-terminal-card border border-terminal-border p-6 rounded-lg">
                     <p className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Buying Power</p>
                     <p className="text-4xl font-bold text-trade-up nums">
@@ -113,30 +113,21 @@ const Portfolio = () => {
                             
                             return (
                                 <tr key={asset.id} className="hover:bg-white/5 transition-colors group">
-                                    {/* Asset Name */}
                                     <td className="p-4">
                                         <div className="text-white font-medium truncate max-w-[200px] group-hover:text-trade-accent transition-colors">
                                             {asset.content}
                                         </div>
                                         <div className="text-xs text-gray-600 mt-1">IPO #{asset.id}</div>
                                     </td>
-                                    
-                                    {/* Shares */}
                                     <td className="p-4 text-right text-gray-300 nums font-bold">
                                         {asset.shares}
                                     </td>
-                                    
-                                    {/* Avg Cost */}
                                     <td className="p-4 text-right text-gray-500 nums">
                                         ${asset.avgPrice.toFixed(2)}
                                     </td>
-                                    
-                                    {/* Market Price */}
                                     <td className="p-4 text-right text-white nums">
                                         ${asset.currPrice.toFixed(2)}
                                     </td>
-                                    
-                                    {/* Return (PnL) */}
                                     <td className={`p-4 text-right nums font-bold ${ColorClass}`}>
                                         <div className="flex items-center justify-end gap-1">
                                             {isProfit ? <TrendingUp size={14} /> : <TrendingDown size={14} />}

@@ -60,3 +60,14 @@ class UserRead(SQLModel):
     id: int
     username: str
     balance: float
+
+class PortfolioRead(SQLModel):
+    """
+    Schema for sending Portfolio data to frontend.
+    Excludes relationships to prevent infinite loops.
+    """
+    id: int
+    user_id: int
+    post_id: int
+    shares_owned: int
+    avg_buy_price: float

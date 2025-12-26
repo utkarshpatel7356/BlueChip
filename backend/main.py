@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-
+from models import User, Post, Transaction, Portfolio, UserRead, PortfolioRead # <--- Add PortfolioRead
 from database import create_db_and_tables, get_session
 from models import User, Post, Transaction, Portfolio, UserRead
 from trading import get_current_price, calculate_buy_cost, calculate_sell_value
@@ -179,7 +179,7 @@ def sell_shares(post_id: int, amount: int, current_user: User = Depends(get_curr
     session.commit()
     return {"status": "success", "new_balance": user.balance, "payout": payout}
 
-@app.get("/portfolio/{user_id}", response_model=list[Portfolio])
+@app.get("/portfolio/{user_id}", response_model=list[PortfolioRead]) # <--- CHANGE THIS
 def get_portfolio(user_id: int, session: Session = Depends(get_session)):
     statement = select(Portfolio).where(Portfolio.user_id == user_id)
     results = session.exec(statement).all()
