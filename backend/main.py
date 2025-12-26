@@ -12,12 +12,17 @@ from auth import verify_password, get_password_hash, create_access_token, SECRET
 
 app = FastAPI(title="BlueChip Text Exchange")
 
-# CORS Setup
+
+origins = [
+    "http://localhost:5173",
+    "https://blue-chip-beta.vercel.app" # <--- Add your Vercel URL here
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], 
+    allow_origins=origins, # Use the list
     allow_credentials=True,
-    allow_methods=["*"], 
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
