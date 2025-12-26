@@ -5,26 +5,23 @@ import { useUser } from '../context/UserContext';
 import { PieChart, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
 
 const Portfolio = () => {
-    const { user, refreshUser } = useUser(); // Removed USER_ID
+    const { user, refreshUser } = useUser(); 
     const [assets, setAssets] = useState([]);
     const [netWorth, setNetWorth] = useState(0);
 
+    // 1. Fetch Portfolio Data (Only runs when user ID changes)
     useEffect(() => {
         const fetchPortfolioData = async () => {
-            // Check if user is loaded before fetching
             if (!user || !user.id) return;
 
             try {
-                // 1. Get Holdings
-                const portRes = await endpoints.getPortfolio(user.id); // Use user.id
+                const portRes = await endpoints.getPortfolio(user.id); 
                 const holdings = portRes.data;
 
-                // 2. Get Live Prices
                 const postsRes = await endpoints.getPosts();
                 const postsMap = {};
                 postsRes.data.forEach(p => postsMap[p.id] = p);
 
-                // 3. Calculate Logic
                 let totalAssetValue = 0;
                 
                 const detailedAssets = holdings.map(h => {
@@ -34,7 +31,6 @@ const Portfolio = () => {
                     const currentVal = h.shares_owned * post.current_price;
                     const costBasis = h.shares_owned * h.avg_buy_price;
                     const pnl = currentVal - costBasis;
-                    // Avoid division by zero
                     const pnlPercent = costBasis > 0 ? ((pnl / costBasis) * 100) : 0;
 
                     totalAssetValue += currentVal;
@@ -53,7 +49,7 @@ const Portfolio = () => {
 
                 setAssets(detailedAssets);
                 
-                // 4. Update Net Worth
+                // Calculate Net Worth based on the LATEST balance
                 setNetWorth(user.balance + totalAssetValue);
 
             } catch (err) {
@@ -62,8 +58,11 @@ const Portfolio = () => {
         };
 
         fetchPortfolioData();
-        refreshUser();
-    }, [user]); // Re-run when user changes
+        
+        // We do NOT call refreshUser() here anymore to prevent loops.
+        // The context handles initial user loading.
+
+    }, [user?.id, user?.balance]); // <--- FIX: Only run if ID or Balance specifically changes
 
     if (!user) return <div className="p-10 text-gray-500">Loading Financial Data...</div>;
 
