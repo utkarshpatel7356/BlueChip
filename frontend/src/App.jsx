@@ -1,11 +1,9 @@
-// src/App.jsx
+// frontend/src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
-import Feed from './components/Feed'; // Import the new Feed
-
-// Placeholder for now
-const Portfolio = () => <div className="text-2xl font-bold p-10 text-gray-500">Portfolio View Coming Soon...</div>;
+import Feed from './components/Feed';
+import Portfolio from './components/Portfolio'; // Import the new file
 
 function App() {
   return (

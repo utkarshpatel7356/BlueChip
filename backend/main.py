@@ -75,58 +75,63 @@ def read_posts(session: Session = Depends(get_session)):
 
 # --- Trading Endpoints ---
 
+# backend/main.py 
+
 @app.post("/trade/buy")
 def buy_shares(user_id: int, post_id: int, amount: int, session: Session = Depends(get_session)):
-    # 1. Get User and Post
     user = session.get(User, user_id)
     post = session.get(Post, post_id)
-    
     if not user or not post:
         raise HTTPException(status_code=404, detail="User or Post not found")
     
-    # 2. Check Supply Limit
     if post.shares_sold + amount > 100:
-        raise HTTPException(status_code=400, detail="Not enough shares available (Max 100)")
+        raise HTTPException(status_code=400, detail="Not enough shares available")
 
-    # 3. Calculate Cost
+    # 1. Calculate Cost
     cost = calculate_buy_cost(post.shares_sold, amount)
     
-    # 4. Check Balance
     if user.balance < cost:
-        raise HTTPException(status_code=400, detail=f"Insufficient funds. Cost: {cost}, Balance: {user.balance}")
+        raise HTTPException(status_code=400, detail="Insufficient funds")
 
-    # 5. EXECUTE TRANSACTION
-    
-    # A. Deduct Money
+    # 2. Update User & Post
     user.balance -= cost
-    
-    # B. Update Post Supply
     post.shares_sold += amount
     post.current_price = get_current_price(post.shares_sold)
     
-    # C. Update Portfolio (Check if entry exists, else create)
+    # 3. Update Portfolio (Weighted Average Logic)
     portfolio_stmt = select(Portfolio).where(Portfolio.user_id == user_id, Portfolio.post_id == post_id)
     portfolio_item = session.exec(portfolio_stmt).first()
     
     if portfolio_item:
-        portfolio_item.shares_owned += amount
+        # Calculate new weighted average
+        total_value_old = portfolio_item.shares_owned * portfolio_item.avg_buy_price
+        total_value_new = total_value_old + cost
+        new_total_shares = portfolio_item.shares_owned + amount
+        
+        portfolio_item.avg_buy_price = total_value_new / new_total_shares
+        portfolio_item.shares_owned = new_total_shares
     else:
-        portfolio_item = Portfolio(user_id=user_id, post_id=post_id, shares_owned=amount)
+        # First buy
+        avg_price = cost / amount
+        portfolio_item = Portfolio(
+            user_id=user_id, 
+            post_id=post_id, 
+            shares_owned=amount, 
+            avg_buy_price=avg_price
+        )
         session.add(portfolio_item)
     
-    # D. Log Transaction
+    # 4. Log Transaction
     txn = Transaction(
         user_id=user_id, post_id=post_id, type="buy", 
         amount=amount, price_at_transaction=post.current_price
     )
     session.add(txn)
-
-    # Commit all changes
     session.add(user)
     session.add(post)
     session.commit()
     
-    return {"status": "success", "new_balance": user.balance, "shares_owned": portfolio_item.shares_owned, "avg_cost": cost}
+    return {"status": "success"}
 
 @app.post("/trade/sell")
 def sell_shares(user_id: int, post_id: int, amount: int, session: Session = Depends(get_session)):

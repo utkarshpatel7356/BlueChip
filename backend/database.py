@@ -5,7 +5,7 @@ sqlite_file_name = "bluechip.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 
 # check_same_thread=False is crucial for SQLite + FastAPI concurrency
-engine = create_engine(sqlite_url, echo=True, connect_args={"check_same_thread": False})
+engine = create_engine(sqlite_url, echo=False, connect_args={"check_same_thread": False})
 
 def create_db_and_tables():
     """Creates all tables defined in models.py if they don't exist."""

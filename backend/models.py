@@ -37,6 +37,9 @@ class Portfolio(SQLModel, table=True):
     post_id: int = Field(foreign_key="post.id")
     shares_owned: int = Field(default=0)
 
+    # NEW FIELD
+    avg_buy_price: float = Field(default=0.0)
+
     # Relationships
     user: User = Relationship(back_populates="portfolio_items")
     post: Post = Relationship(back_populates="portfolio_entries")
