@@ -1,56 +1,71 @@
-// src/components/Feed.jsx
-import React, { useEffect, useState } from 'react';
+// frontend/src/components/Feed.jsx
+import React, { useEffect, useState, useRef } from 'react';
 import { endpoints } from '../api';
 import PostCard from './PostCard';
 import { PlusCircle, RefreshCw } from 'lucide-react';
-import { useUser } from '../context/UserContext'; // <--- Import
+import { useUser } from '../context/UserContext';
 
 const Feed = () => {
     const [posts, setPosts] = useState([]);
-    const [holdings, setHoldings] = useState({}); // Stores the map of ID -> Shares
+    const [holdings, setHoldings] = useState({});
     const [newPostContent, setNewPostContent] = useState("");
     
-    // We still use context for the Balance update, but not for holdings anymore
-    const { refreshUser, USER_ID } = useUser(); 
+    // Get user from context
+    const { user, refreshUser } = useUser(); 
 
-    const refreshData = async () => {
+    // Helper to Load Portfolio (Only called when we have a user)
+    const loadPortfolio = async (userId) => {
+        if (!userId) return;
         try {
-            // 1. Fetch Posts (Safe to do always)
-            const postsRes = await endpoints.getPosts();
-            setPosts(postsRes.data.sort((a, b) => b.id - a.id));
-
-            // 2. Refresh User & Check if logged in
-            await refreshUser(); 
-            
-            // --- FIX START ---
-            // Only fetch portfolio if we actually have a User ID
-            // We use the 'user' object from context, OR check the token
-            if (user && user.id) {
-                const portfolioRes = await endpoints.getPortfolio(user.id);
-                
-                const portfolioMap = {};
-                portfolioRes.data.forEach(item => {
-                    portfolioMap[item.post_id] = item.shares_owned;
-                });
-                setHoldings(portfolioMap);
-            }
-            // --- FIX END ---
-
+            const portfolioRes = await endpoints.getPortfolio(userId);
+            const portfolioMap = {};
+            portfolioRes.data.forEach(item => {
+                portfolioMap[item.post_id] = item.shares_owned;
+            });
+            setHoldings(portfolioMap);
         } catch (error) {
-            console.error("Error fetching data:", error);
+            console.error("Portfolio load error", error);
         }
     };
 
+    // 1. Initial Data Load
     useEffect(() => {
-        refreshData();
-        const interval = setInterval(refreshData, 5000); 
+        const initLoad = async () => {
+            // Load posts
+            const postsRes = await endpoints.getPosts();
+            setPosts(postsRes.data.sort((a, b) => b.id - a.id));
+
+            // Load user details
+            await refreshUser();
+        };
+        initLoad();
+    }, []); // Empty array = Runs ONCE on mount
+
+    // 2. Poll only for POSTS (Safe, won't cause loops)
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            const postsRes = await endpoints.getPosts();
+            setPosts(postsRes.data.sort((a, b) => b.id - a.id));
+        }, 5000);
         return () => clearInterval(interval);
     }, []);
 
+    // 3. Update Holdings when User changes (e.g. after login)
+    useEffect(() => {
+        if (user && user.id) {
+            loadPortfolio(user.id);
+        }
+    }, [user]); // Safe because loadPortfolio does NOT update 'user'
+
+    // --- Actions ---
+
     const handleBuy = async (postId, amount) => {
         try {
-            await endpoints.buy(USER_ID, postId, amount);
-            refreshData(); // Updates Posts AND User Balance/Holdings
+            await endpoints.buy(postId, amount);
+            // Manually refresh everything after action
+            refreshUser();
+            const postsRes = await endpoints.getPosts();
+            setPosts(postsRes.data.sort((a, b) => b.id - a.id));
         } catch (err) {
             alert("Buy failed: " + (err.response?.data?.detail || err.message));
         }
@@ -58,8 +73,10 @@ const Feed = () => {
 
     const handleSell = async (postId, amount) => {
         try {
-            await endpoints.sell(USER_ID, postId, amount);
-            refreshData();
+            await endpoints.sell(postId, amount);
+            refreshUser(); 
+            const postsRes = await endpoints.getPosts();
+            setPosts(postsRes.data.sort((a, b) => b.id - a.id));
         } catch (err) {
             alert("Sell failed: " + (err.response?.data?.detail || err.message));
         }
@@ -71,14 +88,14 @@ const Feed = () => {
         try {
             await endpoints.createPost(newPostContent);
             setNewPostContent("");
-            refreshData();
+            const postsRes = await endpoints.getPosts();
+            setPosts(postsRes.data.sort((a, b) => b.id - a.id));
         } catch (err) {
             alert("IPO failed");
         }
     };
 
     return (
-        // ... (Keep the exact same JSX as before)
         <div>
             {/* Top Bar: IPO Input */}
             <div className="mb-8">
@@ -102,7 +119,7 @@ const Feed = () => {
             {/* Feed Header */}
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-200">Market Feed</h2>
-                <button onClick={refreshData} className="text-gray-500 hover:text-white">
+                <button onClick={() => window.location.reload()} className="text-gray-500 hover:text-white">
                     <RefreshCw size={18} />
                 </button>
             </div>

@@ -1,14 +1,12 @@
-// src/api.js
 import axios from 'axios';
 
 const API_URL = 'http://127.0.0.1:8000';
 
-// Create an axios instance
 const api = axios.create({
     baseURL: API_URL,
 });
 
-// Automatic Token Insertion
+// Auto-add Token
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -37,13 +35,11 @@ export const endpoints = {
     
     // Posts
     getPosts: () => api.get('/posts/'),
-    
-    // CORRECTION HERE: Removed 'creatorId'. The backend gets it from the token now.
     createPost: (content) => api.post('/posts/', { content }), 
     
     getLeaderboard: () => api.get('/leaderboard'),
 
-    // Trading
+    // --- THE FIX: Manually construct the URL strings ---
     buy: (postId, amount) => api.post(`/trade/buy?post_id=${postId}&amount=${amount}`),
     sell: (postId, amount) => api.post(`/trade/sell?post_id=${postId}&amount=${amount}`),
 };
